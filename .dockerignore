@@ -1,0 +1,9 @@
+node_modules
+dist
+.git
+.angular
+.recovery
+.previews
+.publish
+gather-backend
+.env

@@ -1,0 +1,1300 @@
+<div class="gather-app" [style.--accent]="ws?.accent||'#247461'">
+  <aside class="workspace-rail">
+    <a class="wordmark" routerLink="/"
+      ><img src="assets/gather-mark.svg" alt="" />Gather</a
+    ><label class="workspace-select"
+      ><span class="eyebrow">YOUR WORKSPACE</span
+      ><select
+        [ngModel]="workspaceId"
+        (ngModelChange)="loadWorkspace(+$event)"
+        [disabled]="busy||loading"
+        aria-label="Switch workspace"
+      >
+        @for(workspace of workspaces;track workspace.id){
+        <option [value]="workspace.id">{{workspace.name}}</option>
+        }
+      </select></label
+    ><button class="new-workspace-link" (click)="showNewWorkspace=true">
+      + Create a workspace
+    </button>
+    <span class="rail-label">WORKSPACE</span>
+    <nav aria-label="Main navigation">
+      <a routerLink="/gather/feed" routerLinkActive="selected"
+        ><span class="material-symbols-outlined">dynamic_feed</span>Community
+        feed</a
+      ><a routerLink="/gather/messages" routerLinkActive="selected"
+        ><span class="material-symbols-outlined">forum</span>Messages</a
+      ><a routerLink="/gather/saved" routerLinkActive="selected"
+        ><span class="material-symbols-outlined">bookmark</span>Saved posts</a
+      ><a routerLink="/gather/profile" routerLinkActive="selected"
+        ><span class="material-symbols-outlined">person</span>My profile</a
+      >
+    </nav>
+    <div class="rail-spaces">
+      <span class="rail-label">YOUR SPACES</span>
+      <nav aria-label="Community spaces">
+        @for(space of activeSpaces;track space.id){<a
+          routerLink="/gather/feed"
+          [queryParams]="{space:space.id}"
+          [class.space-active]="selectedSpace===space.id"
+          ><span class="hash">#</span>{{space.name}}</a
+        >}
+      </nav>
+    </div>
+    <div class="rail-bottom">
+      <div class="rail-note">
+        <span class="material-symbols-outlined">spa</span
+        ><strong>A little more connected.</strong>
+        <p>Share a thought. Start a conversation. Make yourself at home.</p>
+      </div>
+      @if(canModerate){
+      <nav>
+        <a routerLink="/gather/admin" routerLinkActive="selected"
+          ><span class="material-symbols-outlined">tune</span>Admin studio
+          <small>{{ws?.counts?.reports||''}}</small></a
+        >
+      </nav>
+      }<a class="rail-person" routerLink="/gather/profile"
+        ><span class="avatar">{{initials(api.user()?.name||'You')}}</span>
+        <div>
+          <strong>{{api.user()?.name}}</strong><small>{{ws?.role}}</small>
+        </div></a
+      >
+    </div>
+  </aside>
+  <header class="workspace-topbar">
+    <div class="desktop-breadcrumb">
+      <span class="muted">Workspace</span
+      ><span class="breadcrumb-separator">/</span
+      ><strong>{{ws?.name||'Gather'}}</strong>
+    </div>
+    <div class="mobile-workspace">
+      <select
+        [ngModel]="workspaceId"
+        (ngModelChange)="loadWorkspace(+$event)"
+        [disabled]="busy||loading"
+        aria-label="Switch mobile workspace"
+      >
+        @for(workspace of workspaces;track workspace.id){
+        <option [value]="workspace.id">{{workspace.name}}</option>
+        }</select
+      ><button
+        class="icon-button"
+        (click)="showNewWorkspace=true"
+        aria-label="Create workspace"
+      >
+        +
+      </button>
+    </div>
+    <div class="topbar-actions">
+      <span class="plan-pill">{{ws?.limits?.name||'Workspace'}}</span
+      ><button
+        class="icon-button"
+        (click)="reload()"
+        [disabled]="busy||loading"
+        aria-label="Refresh workspace"
+      >
+        <span class="material-symbols-outlined">refresh</span></button
+      ><button
+        class="icon-button"
+        (click)="logout()"
+        [disabled]="busy"
+        aria-label="Sign out"
+      >
+        <span class="material-symbols-outlined">logout</span></button
+      ><a
+        class="avatar small"
+        routerLink="/gather/profile"
+        aria-label="Your profile"
+        >{{initials(api.user()?.name||'You')}}</a
+      >
+    </div>
+  </header>
+  <main class="workspace-main">
+    <div class="page-intro">
+      <div>
+        <span class="eyebrow"
+          >{{section==='admin'?'A LITTLE BEHIND THE
+          SCENES':section==='messages'?'KEEP THE CONVERSATION GOING':'YOUR
+          PEOPLE. YOUR PLACE.'}}</span
+        >
+        <h1>{{title}}<span>.</span></h1>
+        <p>
+          {{section==='feed'?'Fresh ideas, familiar faces, and a little
+          inspiration.':section==='saved'?'Keep the good ideas
+          close.':section==='messages'?'Private conversations with your
+          workspace members.':section==='profile'?'A little about you and what
+          you have shared.':'Your community, thoughtfully managed.'}}
+        </p>
+      </div>
+      @if(section==='admin'){<a class="button" routerLink="/gather/feed"
+        >View community ↗</a
+      >}
+    </div>
+    @if(error){
+    <div class="error" role="alert">
+      {{error}} @if(!api.user()){<a routerLink="/login">Sign in again ↗</a>}
+    </div>
+    }@if(notice){
+    <div class="notice" role="status">
+      <span class="material-symbols-outlined">check_circle</span>{{notice}}
+    </div>
+    } @if(loading){
+    <div class="panel empty-state" role="status">
+      <span class="material-symbols-outlined">hourglass_top</span>
+      <h2>Getting your space ready…</h2>
+    </div>
+    }@else if(!ws){
+    <div class="panel empty-state">
+      <span class="material-symbols-outlined">diversity_2</span>
+      <h2>A place for your people</h2>
+      <p>
+        Create a workspace, or ask an administrator for a fresh invitation if
+        your access changed.
+      </p>
+      <button class="button" (click)="showNewWorkspace=true">
+        Create a workspace</button
+      ><button class="secondary" (click)="reload()">Retry</button>
+    </div>
+    }@else{ @if(section==='feed'||section==='saved'||section==='profile'){
+    <div class="community-grid">
+      <section class="feed-column">
+        @if(section==='feed'){
+        <div class="welcome-banner">
+          <span class="eyebrow">A SPACE THAT FEELS LIKE YOU</span>
+          <h2>{{ws.tagline}}</h2>
+          <p>
+            Big ideas start with a small hello.<br />What will you share today?
+          </p>
+          <a routerLink="/gather/messages">Start a conversation ↗</a
+          ><span class="banner-decoration" aria-hidden="true">✳</span>
+        </div>
+        <form class="panel composer" (ngSubmit)="publish()">
+          <div class="composer-heading">
+            <span class="avatar">{{initials(api.user()?.name||'You')}}</span
+            ><label for="new-post">Share something with your people</label>
+          </div>
+          <textarea
+            id="new-post"
+            [(ngModel)]="composer"
+            name="post"
+            required
+            maxlength="5000"
+            rows="3"
+            placeholder="A thought, an update, a little inspiration…"
+          ></textarea>
+          <div class="composer-actions">
+            <label class="space-select"
+              ><span>#</span
+              ><select
+                [(ngModel)]="composerSpace"
+                name="space"
+                aria-label="Post space"
+                required
+              >
+                @for(space of activeSpaces;track space.id){
+                <option [value]="space.id">{{space.name}}</option>
+                }
+              </select></label
+            ><small>{{composer.length}} / 5000</small
+            ><button
+              class="button"
+              type="submit"
+              [disabled]="busy||!composer.trim()||!composerSpace"
+            >
+              Publish
+              <span class="material-symbols-outlined">arrow_upward</span>
+            </button>
+          </div>
+        </form>
+        } @if(section==='profile'){
+        <section class="panel profile-panel">
+          <div class="profile-heading">
+            <span class="avatar large"
+              >{{initials(api.user()?.name||'You')}}</span
+            >
+            <div>
+              <h2>{{api.user()?.name}}</h2>
+              <p>{{api.user()?.email}}</p>
+              <span class="status-chip">{{ws.role}}</span>
+            </div>
+          </div>
+          <form (ngSubmit)="saveProfile()">
+            <label
+              >Display name<input
+                [(ngModel)]="profileName"
+                name="name"
+                required
+                maxlength="80"
+                autocomplete="name" /></label
+            ><button class="button" type="submit" [disabled]="busy">
+              Save profile
+            </button>
+          </form>
+          <details>
+            <summary>Change your password</summary>
+            <form (ngSubmit)="changePassword()">
+              <label
+                >Current password<input
+                  [(ngModel)]="currentPassword"
+                  name="current"
+                  type="password"
+                  required
+                  maxlength="128"
+                  autocomplete="current-password" /></label
+              ><label
+                >New password<input
+                  [(ngModel)]="newPassword"
+                  name="new"
+                  type="password"
+                  required
+                  minlength="10"
+                  maxlength="128"
+                  autocomplete="new-password" /></label
+              ><small
+                >At least 10 characters. Other sessions will be signed
+                out.</small
+              ><button class="button" type="submit" [disabled]="busy">
+                Update password
+              </button>
+            </form>
+          </details>
+          <button
+            class="secondary"
+            (click)="exportData()"
+            [disabled]="busy"
+            style="margin-top: 20px"
+          >
+            Download my data
+          </button>
+        </section>
+        }
+        <div class="feed-controls">
+          <div class="feed-filter">
+            <button class="tab active" (click)="selectSpace(0)">
+              {{section==='saved'?'Your saved posts':section==='profile'?'Your
+              posts':selectedSpace?'# '+selectedSpaceName:'For you'}}</button
+            >@if(section==='feed'){<select
+              [ngModel]="selectedSpace"
+              (ngModelChange)="selectSpace(+$event)"
+              aria-label="Filter feed by space"
+            >
+              <option [value]="0">All spaces</option>
+              @for(space of ws.spaces;track space.id){
+              <option [value]="space.id">
+                {{space.name}}{{space.archived?' (archived)':''}}
+              </option>
+              }</select
+            >}
+          </div>
+          <form class="search-form" (ngSubmit)="searchPosts()">
+            <input
+              [(ngModel)]="search"
+              name="search"
+              placeholder="Search posts"
+              aria-label="Search posts"
+              maxlength="100"
+            /><button
+              type="submit"
+              class="icon-button"
+              [disabled]="busy"
+              aria-label="Search"
+            >
+              <span class="material-symbols-outlined">search</span>
+            </button>
+          </form>
+        </div>
+        @for(post of posts;track post.id){
+        <article class="panel post-card">
+          <header class="post-heading">
+            <span class="avatar">{{initials(post.author)}}</span>
+            <div>
+              <strong>{{post.author}}</strong
+              ><small
+                >{{time(post.created)|date:'MMM d, h:mm a'}} · #
+                {{post.space_name}} @if(post.updated){ · Edited}</small
+              >
+            </div>
+            <div class="post-tools">
+              @if(post.user_id===api.user()?.id){<button
+                class="icon-button"
+                (click)="beginEdit(post)"
+                aria-label="Edit post"
+              >
+                <span class="material-symbols-outlined">edit</span></button
+              >}@if(post.user_id===api.user()?.id||canModerate){<button
+                class="icon-button"
+                (click)="confirmDelete=post"
+                aria-label="Delete post"
+              >
+                <span class="material-symbols-outlined">delete</span></button
+              >}<button
+                class="icon-button"
+                (click)="reportPost=post;reportReason=''"
+                aria-label="Report post"
+              >
+                <span class="material-symbols-outlined">flag</span>
+              </button>
+            </div>
+          </header>
+          <p class="post-copy">{{post.body}}</p>
+          <div class="post-actions">
+            <button
+              [class.is-active]="post.liked"
+              (click)="togglePost(post,'reaction')"
+              [disabled]="busy"
+              [attr.aria-pressed]="!!post.liked"
+              aria-label="Like post"
+            >
+              <span class="material-symbols-outlined">favorite</span
+              >{{post.likes}}</button
+            ><span
+              ><span class="material-symbols-outlined">chat_bubble</span
+              >{{post.comment_count}}</span
+            ><button
+              class="save-action"
+              [class.is-active]="post.saved"
+              (click)="togglePost(post,'bookmark')"
+              [disabled]="busy"
+              [attr.aria-pressed]="!!post.saved"
+            >
+              <span class="material-symbols-outlined">bookmark</span
+              >{{post.saved?'Saved':'Save'}}
+            </button>
+          </div>
+          @if(post.comment_count>post.comments.length){<button
+            class="text-button"
+            (click)="olderComments(post)"
+            [disabled]="busy"
+          >
+            Load earlier comments</button
+          >}@for(comment of post.comments;track comment.id){
+          <div class="comment">
+            <span class="avatar tiny">{{initials(comment.author)}}</span>
+            <div>
+              <strong>{{comment.author}}</strong>
+              <p>{{comment.body}}</p>
+              <small>{{time(comment.created)|date:'MMM d, h:mm a'}}</small>
+            </div>
+            @if(comment.user_id===api.user()?.id||canModerate){<button
+              class="icon-button"
+              (click)="deleteComment(post,comment.id)"
+              [disabled]="busy"
+              aria-label="Delete comment"
+            >
+              <span class="material-symbols-outlined">close</span></button
+            >}
+          </div>
+          }
+          <form class="comment-form" (ngSubmit)="addComment(post)">
+            <input
+              [(ngModel)]="commentDrafts[post.id]"
+              [name]="'comment-'+post.id"
+              placeholder="Add to the conversation…"
+              aria-label="Comment text"
+              maxlength="1500"
+              required
+            /><button
+              type="submit"
+              class="icon-button"
+              [disabled]="busy||!commentDrafts[post.id]?.trim()"
+              aria-label="Send comment"
+            >
+              <span class="material-symbols-outlined">arrow_upward</span>
+            </button>
+          </form>
+        </article>
+        }@empty{
+        <div class="panel empty-state">
+          <span class="material-symbols-outlined"
+            >{{section==='saved'?'bookmark':'forum'}}</span
+          >
+          <h2>
+            {{search?'No matching posts':section==='saved'?'A little
+            inspiration, saved for later':'Your story starts here'}}
+          </h2>
+          <p>
+            {{search?'Try another search.':section==='saved'?'Save a post from
+            the community feed to find it here.':'Share your first thought or
+            invite your people to join the conversation.'}}
+          </p>
+          @if(section==='saved'){<a class="button" routerLink="/gather/feed"
+            >Explore the feed ↗</a
+          >}
+        </div>
+        } @if(hasMore){<button
+          class="secondary load-more"
+          [disabled]="busy"
+          (click)="loadMorePosts()"
+        >
+          Load more posts</button
+        >}
+      </section>
+      <aside class="community-aside">
+        <section class="panel community-card">
+          <div class="community-cover">A place to belong.</div>
+          <div class="community-card-body">
+            <span class="workspace-avatar">{{initials(ws.name)}}</span>
+            <h2>{{ws.name}}</h2>
+            <p>{{ws.tagline}}</p>
+            <div class="community-stats">
+              <div>
+                <strong>{{ws.counts.members}}</strong><small>Members</small>
+              </div>
+              <div>
+                <strong>{{activeSpaces.length}}</strong><small>Spaces</small>
+              </div>
+              <div>
+                <strong>{{ws.counts.posts}}</strong><small>Posts</small>
+              </div>
+            </div>
+            @if(canAdmin){<a class="secondary full" routerLink="/gather/admin"
+              >Manage community ↗</a
+            >}
+          </div>
+        </section>
+        <section class="panel aside-panel">
+          <h2>Find your people</h2>
+          <p>A conversation for every curiosity.</p>
+          @for(space of activeSpaces;track space.id){<button
+            class="space-row"
+            (click)="selectSpace(space.id)"
+          >
+            <span>#</span>
+            <div>
+              <strong>{{space.name}}</strong
+              ><small>{{space.description||'Join the conversation'}}</small>
+            </div>
+            <span class="material-symbols-outlined">chevron_right</span></button
+          >}
+        </section>
+        <section class="panel aside-panel">
+          <h2>Meet the community</h2>
+          @for(member of ws.members.slice(0,5);track member.id){
+          <div class="member-row">
+            <span class="avatar small">{{initials(member.name)}}</span>
+            <div>
+              <strong>{{member.name}}</strong
+              ><small>{{member.role}} · {{member.status}}</small>
+            </div>
+          </div>
+          }
+        </section>
+        <p class="aside-footer">
+          A little closer, every day.<br />Powered by Gather.
+        </p>
+      </aside>
+    </div>
+    } @if(section==='messages'){
+    <div class="messenger" [class.thread-open]="mobileThread">
+      <aside class="conversation-sidebar">
+        <div class="inbox-heading">
+          <h2>Your inbox <small>{{conversations.length}}</small></h2>
+          <button
+            class="icon-button"
+            (click)="showPeople=!showPeople"
+            aria-label="New conversation"
+          >
+            <span class="material-symbols-outlined">edit_square</span>
+          </button>
+        </div>
+        <label class="conversation-search"
+          ><span class="material-symbols-outlined">search</span
+          ><input
+            [(ngModel)]="chatSearch"
+            placeholder="Search people…"
+            aria-label="Search conversations"
+        /></label>
+        <div class="conversation-tabs">
+          @for(filter of ['All','Unread','Starred'];track filter){<button
+            [class.active]="chatFilter===filter"
+            (click)="chatFilter=filter"
+          >
+            {{filter}}</button
+          >}
+        </div>
+        @if(showPeople){
+        <section class="people-picker">
+          <div>
+            <strong>Start a conversation</strong
+            ><button
+              class="icon-button"
+              (click)="showPeople=false"
+              aria-label="Close member picker"
+            >
+              ×
+            </button>
+          </div>
+          @for(person of people;track person.id){<button
+            (click)="startConversation(person)"
+            [disabled]="busy"
+          >
+            <span class="avatar small">{{initials(person.name)}}</span
+            >{{person.name}} <span>↗</span></button
+          >}@empty{
+          <p>Invite another member to start a conversation.</p>
+          }
+        </section>
+        }
+        <div class="conversation-list">
+          @for(chat of visibleConversations;track chat.id){<button
+            class="conversation"
+            [class.current]="chat.id===selectedConversation?.id"
+            (click)="openConversation(chat)"
+          >
+            <span class="avatar"
+              >{{initials(chat.people.at(0)?.name||'Member')}}</span
+            >
+            <div>
+              <strong>{{chat.people.at(0)?.name}}</strong>
+              <p>{{chat.last?.body||'Say a little hello.'}}</p>
+              <small
+                >{{chat.last? (time(chat.last.created)|date:'MMM d, h:mm
+                a'):''}}</small
+              >
+            </div>
+            @if(chat.unread){<span class="unread-badge">{{chat.unread}}</span
+            >}@else if(chat.starred){<span
+              class="material-symbols-outlined pin-icon"
+              >star</span
+            >}</button
+          >}@empty{
+          <div class="empty-state compact">
+            <span class="material-symbols-outlined">forum</span>
+            <h3>No conversations yet</h3>
+            <p>
+              {{chatFilter==='All'?'Start with a little hello.':'No
+              conversations match this filter.'}}
+            </p>
+            <button
+              class="secondary"
+              (click)="showPeople=true;chatFilter='All';chatSearch=''"
+            >
+              New conversation
+            </button>
+          </div>
+          }
+        </div>
+        <p class="inbox-footer">
+          Updates every 4 seconds while this page is open.
+        </p>
+      </aside>
+      <section class="conversation-thread">
+        @if(selectedConversation){
+        <header class="thread-heading">
+          <button
+            class="icon-button thread-back"
+            (click)="mobileThread=false"
+            aria-label="Back to conversations"
+          >
+            <span class="material-symbols-outlined">arrow_back</span></button
+          ><span class="avatar"
+            >{{initials(selectedConversation.people.at(0)?.name||'Member')}}</span
+          >
+          <div>
+            <h2>{{selectedConversation.people.at(0)?.name}}</h2>
+            <small
+              >{{selectedConversation.people.at(0)?.status==='suspended'?'This
+              member is suspended':'Private workspace conversation'}}</small
+            >
+          </div>
+          <button
+            class="icon-button star-conversation"
+            (click)="starConversation()"
+            [disabled]="busy"
+            [attr.aria-pressed]="!!selectedConversation.starred"
+            aria-label="Star conversation"
+          >
+            <span
+              class="material-symbols-outlined"
+              [class.starred]="selectedConversation.starred"
+              >star</span
+            >
+          </button>
+        </header>
+        <div class="message-scroll" #messageList>
+          @if(messageMore){<button
+            class="secondary load-more"
+            (click)="olderMessages()"
+            [disabled]="busy"
+          >
+            Load earlier messages</button
+          >}@for(message of messages;track message.id){
+          <div
+            class="message-row"
+            [class.from-me]="message.user_id===api.user()?.id"
+          >
+            <div class="message-bubble">
+              <p>{{message.body}}</p>
+              <small>{{time(message.created)|date:'MMM d, h:mm a'}}</small>
+            </div>
+          </div>
+          }@empty{
+          <div class="empty-state compact">
+            <span class="material-symbols-outlined">waving_hand</span>
+            <h3>A good conversation starts here.</h3>
+            <p>Say hello to {{selectedConversation.people.at(0)?.name}}.</p>
+          </div>
+          }
+        </div>
+        <div class="thread-composer">
+          @if(showEmoji){
+          <div class="emoji-picker">
+            @for(emoji of ['👋','😊','✨','🙌','💚','👍'];track emoji){<button
+              (click)="messageText=messageText+emoji;showEmoji=false"
+              [attr.aria-label]="'Insert '+emoji"
+            >
+              {{emoji}}</button
+            >}
+          </div>
+          }
+          <form (ngSubmit)="sendMessage()">
+            <button
+              type="button"
+              class="icon-button"
+              (click)="showEmoji=!showEmoji"
+              aria-label="Choose emoji"
+            >
+              <span class="material-symbols-outlined"
+                >sentiment_satisfied</span
+              ></button
+            ><input
+              [(ngModel)]="messageText"
+              name="message"
+              placeholder="Write a thoughtful message…"
+              aria-label="Message text"
+              required
+              maxlength="4000"
+              autocomplete="off"
+            /><button
+              class="button icon"
+              type="submit"
+              [disabled]="busy||!messageText.trim()||selectedConversation.people.at(0)?.status==='suspended'"
+              aria-label="Send message"
+            >
+              <span class="material-symbols-outlined">arrow_upward</span>
+            </button>
+          </form>
+          <small
+            >Visible only to the participants and stored on the Gather
+            server.</small
+          >
+        </div>
+        }@else{
+        <div class="empty-state">
+          <span class="material-symbols-outlined">forum</span>
+          <h2>A little hello can go a long way.</h2>
+          <p>Choose a conversation or start a new one.</p>
+        </div>
+        }
+      </section>
+    </div>
+    } @if(section==='admin'){
+    <nav class="admin-tabs" aria-label="Admin sections">
+      @for(tab of adminTabs;track tab){<button
+        [class.active]="adminTab===tab"
+        (click)="selectAdmin(tab)"
+        [disabled]="busy"
+      >
+        {{tab}}</button
+      >}
+    </nav>
+    @if(adminTab==='Overview'){
+    <div class="metrics">
+      <article class="panel metric">
+        <span class="material-symbols-outlined">group</span
+        ><small>Active members</small><strong>{{ws.counts.members}}</strong>
+        <p>{{ws.limits.members}} included in your plan</p>
+      </article>
+      <article class="panel metric">
+        <span class="material-symbols-outlined">tag</span
+        ><small>Community spaces</small><strong>{{activeSpaces.length}}</strong>
+        <p>{{ws.limits.spaces}} active spaces included</p>
+      </article>
+      <article class="panel metric">
+        <span class="material-symbols-outlined">dynamic_feed</span
+        ><small>Visible posts</small><strong>{{ws.counts.posts}}</strong>
+        <p>{{ws.counts.reports}} open moderation reports</p>
+      </article>
+    </div>
+    <div class="overview-grid">
+      <section class="panel launch-card">
+        <span class="eyebrow">MAKE YOURSELF AT HOME</span>
+        <h2>A great community starts<br />with a warm welcome.</h2>
+        <p>
+          Bring your identity, invite your people, and give every conversation a
+          place to grow.
+        </p>
+        @if(canAdmin){<button class="button" (click)="selectAdmin('Branding')">
+          Personalize your workspace ↗</button
+        >}@else{<button class="button" (click)="selectAdmin('Moderation')">
+          Review community content ↗</button
+        >}
+      </section>
+      <section class="panel checklist">
+        <h2>Your workspace essentials</h2>
+        @if(canAdmin){<button (click)="selectAdmin('Members')">
+          <span>01</span>
+          <div>
+            <strong>Bring your people together</strong
+            ><small>Create private invitation links</small>
+          </div>
+          ↗</button
+        ><button (click)="selectAdmin('Spaces')">
+          <span>02</span>
+          <div>
+            <strong>Make room for conversations</strong
+            ><small>Organize and archive your spaces</small>
+          </div>
+          ↗</button
+        >}<button (click)="selectAdmin('Moderation')">
+          <span>03</span>
+          <div>
+            <strong>Keep the conversation healthy</strong
+            ><small>Review reports and post visibility</small>
+          </div>
+          ↗
+        </button>
+      </section>
+    </div>
+    } @if(adminTab==='Members'&&canAdmin){
+    <section class="panel management-panel">
+      <div class="section-heading">
+        <div>
+          <h2>Your people</h2>
+          <p>
+            Roles and suspension are enforced by the API on every workspace
+            request.
+          </p>
+        </div>
+        <span class="status-chip"
+          >{{ws.members.length}} / {{ws.limits.members}} seats</span
+        >
+      </div>
+      <form class="inline-form" (ngSubmit)="invite()">
+        <label
+          >Email address<input
+            [(ngModel)]="inviteEmail"
+            name="email"
+            type="email"
+            required
+            maxlength="150"
+            placeholder="teammate@example.com" /></label
+        ><label
+          >Invite as<select [(ngModel)]="inviteRole" name="role">
+            <option value="member">Member</option>
+            <option value="moderator">Moderator</option>
+            @if(isOwner){
+            <option value="admin">Admin</option>
+            }
+          </select></label
+        ><button class="button" type="submit" [disabled]="busy">
+          Create invitation
+        </button>
+      </form>
+      @if(inviteUrl){
+      <div class="invitation-result">
+        <label
+          >Private invitation link · expires in 7 days<input
+            [value]="inviteUrl"
+            readonly
+            aria-label="Invitation link" /></label
+        ><button class="secondary" (click)="copyInvite()">Copy link</button>
+        <p>
+          No email is sent automatically. Share this link only with the invited
+          person.
+        </p>
+      </div>
+      }<label class="search-field"
+        ><span class="material-symbols-outlined">search</span
+        ><input
+          [(ngModel)]="memberSearch"
+          placeholder="Find a member…"
+          aria-label="Find a member"
+      /></label>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Member</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for(member of filteredMembers;track member.id){
+            <tr>
+              <td>
+                <div class="table-person">
+                  <span class="avatar small">{{initials(member.name)}}</span>
+                  <div>
+                    <strong>{{member.name}}</strong
+                    ><small>{{member.email}}</small>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <select
+                  [(ngModel)]="member.role"
+                  [disabled]="busy||member.role==='owner'||member.id===api.user()?.id||(!isOwner&&member.role==='admin')"
+                  [attr.aria-label]="'Role for '+member.name"
+                >
+                  @if(member.role==='owner'){
+                  <option value="owner">Owner</option>
+                  }@if(isOwner||member.role==='admin'){
+                  <option value="admin">Admin</option>
+                  }
+                  <option value="moderator">Moderator</option>
+                  <option value="member">Member</option>
+                </select>
+              </td>
+              <td>
+                <select
+                  [(ngModel)]="member.status"
+                  [disabled]="busy||member.role==='owner'||member.id===api.user()?.id||(!isOwner&&member.role==='admin')"
+                  [attr.aria-label]="'Status for '+member.name"
+                >
+                  <option value="active">Active</option>
+                  <option value="suspended">Suspended</option>
+                </select>
+              </td>
+              <td>
+                <button
+                  class="secondary"
+                  (click)="saveMember(member)"
+                  [disabled]="busy||member.role==='owner'||member.id===api.user()?.id||(!isOwner&&member.role==='admin')"
+                >
+                  Save
+                </button>
+              </td>
+            </tr>
+            }@empty{
+            <tr>
+              <td colspan="4">No matching members.</td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if(invitations.length){
+      <h3 class="subsection-title">Pending invitations</h3>
+      @for(invite of invitations;track invite.email){
+      <div class="invitation-row">
+        <div>
+          <strong>{{invite.email}}</strong
+          ><small
+            >{{invite.role}} · Expires {{invite.expires|date:'MMM d, h:mm
+            a'}}</small
+          >
+        </div>
+        <button
+          class="text-button danger"
+          (click)="revokeInvite(invite.email)"
+          [disabled]="busy"
+        >
+          Revoke
+        </button>
+      </div>
+      }}
+    </section>
+    } @if(adminTab==='Spaces'&&canAdmin){
+    <section class="panel management-panel">
+      <div class="section-heading">
+        <div>
+          <h2>A place for every conversation</h2>
+          <p>
+            Archive a space to stop new posts. Existing conversations remain
+            available.
+          </p>
+        </div>
+      </div>
+      <form class="inline-form" (ngSubmit)="createSpace()">
+        <label
+          >Space name<input
+            [(ngModel)]="spaceName"
+            name="name"
+            required
+            maxlength="45"
+            placeholder="Design & inspiration" /></label
+        ><label
+          >Description<input
+            [(ngModel)]="spaceDescription"
+            name="description"
+            maxlength="200"
+            placeholder="What is this space for?" /></label
+        ><button class="button" type="submit" [disabled]="busy">
+          Create space
+        </button>
+      </form>
+      <div class="spaces-grid">
+        @for(space of ws.spaces;track space.id){
+        <article class="space-card">
+          <span class="space-mark">#</span>
+          <h3>{{space.name}}</h3>
+          <p>{{space.description||'A space for your community.'}}</p>
+          <div>
+            <a routerLink="/gather/feed" [queryParams]="{space:space.id}"
+              >Open space ↗</a
+            ><button
+              class="text-button"
+              (click)="archiveSpace(space.id,!space.archived)"
+              [disabled]="busy"
+            >
+              {{space.archived?'Restore':'Archive'}}
+            </button>
+          </div>
+          @if(space.archived){<span class="status-chip muted-chip"
+            >Archived</span
+          >}
+        </article>
+        }
+      </div>
+    </section>
+    } @if(adminTab==='Moderation'){
+    <section class="panel management-panel">
+      <h2>Keep the conversation healthy</h2>
+      <p>
+        Review reports, hide harmful posts, and restore content when
+        appropriate.
+      </p>
+      <h3 class="subsection-title">Community reports</h3>
+      @for(report of moderation.reports;track report.id){
+      <article class="moderation-row">
+        <div class="section-heading">
+          <strong>{{report.reporter}}</strong
+          ><span
+            class="status-chip"
+            [class.muted-chip]="report.status==='resolved'"
+            >{{report.status}}</span
+          >
+        </div>
+        <blockquote>{{report.body}}</blockquote>
+        <p><strong>Reason:</strong> {{report.reason}}</p>
+        @if(report.status==='open'){<button
+          class="secondary"
+          (click)="resolveReport(report.id)"
+          [disabled]="busy"
+        >
+          Mark resolved</button
+        >}
+      </article>
+      }@empty{
+      <div class="empty-state compact">
+        <span class="material-symbols-outlined">verified_user</span>
+        <h3>No reports to review.</h3>
+      </div>
+      }
+      <h3 class="subsection-title">Latest posts · up to 200</h3>
+      @for(post of moderation.posts;track post.id){
+      <article class="moderation-row">
+        <div class="section-heading">
+          <strong>{{post.author}}</strong
+          ><span class="status-chip" [class.muted-chip]="!!post.hidden"
+            >{{post.hidden?'Hidden':'Visible'}}</span
+          >
+        </div>
+        <p class="post-copy">{{post.body}}</p>
+        <button class="secondary" (click)="moderate(post)" [disabled]="busy">
+          <span class="material-symbols-outlined"
+            >{{post.hidden?'visibility':'visibility_off'}}</span
+          >{{post.hidden?'Restore to feed':'Hide from feed'}}
+        </button>
+      </article>
+      }@empty{
+      <p class="muted">Community posts will appear here.</p>
+      }
+    </section>
+    } @if(adminTab==='Branding'&&canAdmin){
+    <div class="branding-grid">
+      <form class="panel management-panel" (ngSubmit)="saveBrand()">
+        <h2>Make yourself at home</h2>
+        <p>One identity, across the entire workspace.</p>
+        <label
+          >Workspace name<input
+            [(ngModel)]="brandName"
+            name="name"
+            required
+            maxlength="60" /></label
+        ><label
+          >Welcome message<textarea
+            [(ngModel)]="brandTagline"
+            name="tagline"
+            required
+            maxlength="120"
+            rows="3"
+          ></textarea></label
+        ><label
+          >Brand color
+          <div class="color-field">
+            <input [(ngModel)]="brandAccent" name="accent" type="color" /><span
+              >{{brandAccent}}</span
+            >
+          </div></label
+        ><button class="button" type="submit" [disabled]="busy">
+          Publish changes <span>✓</span>
+        </button>
+      </form>
+      <aside>
+        <span class="eyebrow">LIVE BRAND PREVIEW</span>
+        <div class="brand-preview" [style.--preview-accent]="brandAccent">
+          <div>
+            <span class="workspace-avatar"
+              >{{initials(brandName||'Community')}}</span
+            ><strong>{{brandName||'Your community'}}</strong>
+          </div>
+          <section>
+            <span class="eyebrow">YOUR PEOPLE. YOUR PLACE.</span>
+            <h2>{{brandTagline||'A place for your people.'}}</h2>
+            <p>A good conversation starts here.</p>
+          </section>
+          <footer><span>Start a conversation ↗</span></footer>
+        </div>
+      </aside>
+    </div>
+    } @if(adminTab==='Plans'&&canAdmin){
+    <section class="panel management-panel">
+      <div class="section-heading">
+        <div>
+          <h2>Room to grow</h2>
+          <p>
+            Current plan: {{ws.limits.name}}. All prices in USD per workspace
+            per month.
+          </p>
+        </div>
+        <a class="text-button" routerLink="/" fragment="pricing"
+          >Compare plans ↗</a
+        >
+      </div>
+      <div class="plan-summary">
+        <div>
+          <strong>{{ws.members.length}} / {{ws.limits.members}}</strong
+          ><small>Member seats</small>
+        </div>
+        <div>
+          <strong>{{activeSpaces.length}} / {{ws.limits.spaces}}</strong
+          ><small>Active spaces</small>
+        </div>
+        <div>
+          <strong>$ {{ws.limits.price}}</strong
+          ><small>Monthly list price</small>
+        </div>
+      </div>
+      <div class="info-note">
+        Paid plans use a separate invoice agreement. A request does not charge
+        you or change your plan. The operator activates your plan after
+        arranging payment.
+      </div>
+      @if(isOwner){
+      <form class="plan-form" (ngSubmit)="requestPlan()">
+        <label
+          >Requested plan<select [(ngModel)]="requestedPlan" name="plan">
+            <option value="starter">
+              Starter · $49/month · 100 members · 10 spaces
+            </option>
+            <option value="growth">
+              Growth · $149/month · 500 members · 50 spaces
+            </option>
+          </select></label
+        ><label
+          >Tell us about your community and billing needs<textarea
+            [(ngModel)]="planNote"
+            name="note"
+            required
+            maxlength="1000"
+            rows="3"
+          ></textarea></label
+        ><button class="button" type="submit" [disabled]="busy">
+          Request plan review ↗
+        </button>
+      </form>
+      }@else{
+      <p class="muted">Only the workspace owner can request a plan change.</p>
+      }
+      <h3 class="subsection-title">Your requests</h3>
+      @for(request of billing.requests;track request.id){
+      <div class="invitation-row">
+        <div>
+          <strong>{{request.plan|titlecase}} · {{request.status}}</strong
+          ><small
+            >{{time(request.created)|date:'MMM d, yyyy'}} ·
+            {{request.note}}</small
+          >
+        </div>
+      </div>
+      }@empty{
+      <p class="muted">No plan requests yet.</p>
+      }
+    </section>
+    } @if(adminTab==='Activity'&&canAdmin){
+    <section class="panel management-panel">
+      <h2>Workspace activity</h2>
+      <p>The latest 100 administrative actions, recorded by the server.</p>
+      @for(event of audit;track event.id){
+      <div class="audit-row">
+        <span class="material-symbols-outlined">history</span>
+        <div>
+          <strong>{{event.action}}</strong
+          ><small
+            >{{event.actor}} · {{time(event.created)|date:'MMM d, h:mm
+            a'}}</small
+          >
+        </div>
+      </div>
+      }@empty{
+      <p class="muted">No administrative activity yet.</p>
+      }
+    </section>
+    } } }
+  </main>
+  @if(showNewWorkspace){
+  <div class="dialog-backdrop">
+    <section
+      class="dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="new-workspace-title"
+    >
+      <header>
+        <h2 id="new-workspace-title">Make room for your people</h2>
+        <button
+          class="icon-button"
+          (click)="showNewWorkspace=false"
+          aria-label="Close"
+        >
+          ×
+        </button>
+      </header>
+      <p>
+        Create a separate workspace with its own members, feed, and
+        conversations.
+      </p>
+      @if(error){
+      <p class="error" role="alert">{{error}}</p>
+      }
+      <form (ngSubmit)="createWorkspace()">
+        <label
+          >Workspace name<input
+            [(ngModel)]="newWorkspaceName"
+            name="name"
+            required
+            maxlength="60" /></label
+        ><button class="button" type="submit" [disabled]="busy">
+          Create workspace
+        </button>
+      </form>
+    </section>
+  </div>
+  } @if(editPost){
+  <div class="dialog-backdrop">
+    <section
+      class="dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="edit-title"
+    >
+      <header>
+        <h2 id="edit-title">Edit your post</h2>
+        <button class="icon-button" (click)="editPost=null" aria-label="Close">
+          ×
+        </button>
+      </header>
+      @if(error){
+      <p class="error" role="alert">{{error}}</p>
+      }
+      <form (ngSubmit)="savePost()">
+        <label
+          >Post<textarea
+            [(ngModel)]="editText"
+            name="body"
+            required
+            maxlength="5000"
+            rows="6"
+          ></textarea></label
+        ><button
+          class="button"
+          type="submit"
+          [disabled]="busy||!editText.trim()"
+        >
+          Save changes
+        </button>
+      </form>
+    </section>
+  </div>
+  } @if(reportPost){
+  <div class="dialog-backdrop">
+    <section
+      class="dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="report-title"
+    >
+      <header>
+        <h2 id="report-title">Help keep this space welcoming</h2>
+        <button
+          class="icon-button"
+          (click)="reportPost=null"
+          aria-label="Close"
+        >
+          ×
+        </button>
+      </header>
+      <p>Your report goes to this workspace's moderators.</p>
+      @if(error){
+      <p class="error" role="alert">{{error}}</p>
+      }
+      <form (ngSubmit)="report()">
+        <label
+          >Why are you reporting this post?<textarea
+            [(ngModel)]="reportReason"
+            name="reason"
+            required
+            maxlength="500"
+            rows="4"
+          ></textarea></label
+        ><button
+          class="button"
+          type="submit"
+          [disabled]="busy||!reportReason.trim()"
+        >
+          Send report
+        </button>
+      </form>
+    </section>
+  </div>
+  } @if(confirmDelete){
+  <div class="dialog-backdrop">
+    <section
+      class="dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="delete-title"
+    >
+      <header>
+        <h2 id="delete-title">Delete this post?</h2>
+        <button
+          class="icon-button"
+          (click)="confirmDelete=null"
+          aria-label="Close"
+        >
+          ×
+        </button>
+      </header>
+      <p>
+        This also removes its comments, reactions, and saved references. This
+        action cannot be undone.
+      </p>
+      <div class="dialog-actions">
+        <button class="secondary" (click)="confirmDelete=null">Keep post</button
+        ><button
+          class="button destructive"
+          (click)="deletePost()"
+          [disabled]="busy"
+        >
+          Delete post
+        </button>
+      </div>
+    </section>
+  </div>
+  }
+</div>
