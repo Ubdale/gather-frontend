@@ -23,7 +23,7 @@ The Angular development server proxies `/api` to the backend. Production must al
 - Profile changes, personal-data download, and one-use operator-issued password recovery links.
 - Plan change requests with an explicit manual invoice process; limits are enforced by the server. There is no misleading checkout or automatic charge.
 
-The first launch scope is text-based communities. Media uploads, audio/video calls, native mobile apps, and automatic invitation/recovery email are intentionally absent. No feature buttons for these capabilities are exposed.
+Gather supports text and private voice messages with a custom waveform recorder, pause/resume, preview, seeking, and playback speed. Recordings are limited to 3 minutes and 2 MB each. Voice storage allowances are 50 MB for Pilot, 256 MB for Starter, and 1 GB for Growth. Video/file uploads, live calls, native mobile apps, and automatic invitation/recovery email are outside the current scope.
 
 ## Routes
 

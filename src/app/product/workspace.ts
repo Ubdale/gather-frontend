@@ -18,6 +18,11 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { interval } from 'rxjs';
 import {
+  VoiceDraft,
+  VoiceRecorderComponent,
+  VoicePlayerComponent,
+} from './voice';
+import {
   Api,
   Workspace,
   Post,
@@ -62,7 +67,14 @@ interface Billing {
 @Component({
   changeDetection: ChangeDetectionStrategy.Eager,
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, RouterLinkActive],
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterLink,
+    RouterLinkActive,
+    VoiceRecorderComponent,
+    VoicePlayerComponent,
+  ],
   templateUrl: './workspace.html',
 })
 export class WorkspaceComponent implements OnInit {
@@ -71,6 +83,7 @@ export class WorkspaceComponent implements OnInit {
   route = inject(ActivatedRoute);
   destroyRef = inject(DestroyRef);
   @ViewChild('messageList') messageList?: ElementRef<HTMLElement>;
+  @ViewChild(VoiceRecorderComponent) voiceRecorder?: VoiceRecorderComponent;
   ws: Workspace | null = null;
   workspaces: { id: number; name: string; accent: string; role: string }[] = [];
   workspaceId = 0;
@@ -290,6 +303,7 @@ export class WorkspaceComponent implements OnInit {
     }
   }
   async loadWorkspace(id: number) {
+    this.voiceRecorder?.reset();
     this.loading = true;
     this.error = '';
     this.feedSequence++;
@@ -528,6 +542,7 @@ export class WorkspaceComponent implements OnInit {
     }
   }
   async openConversation(conversation: Conversation) {
+    this.voiceRecorder?.reset();
     const sequence = ++this.chatSequence;
     this.selectedConversation = conversation;
     this.mobileThread = true;
@@ -585,6 +600,25 @@ export class WorkspaceComponent implements OnInit {
       this.messageText = '';
       this.showEmoji = false;
       await this.pollMessages();
+    });
+  }
+  async sendVoice(draft: VoiceDraft) {
+    if (!this.selectedConversation || this.busy) return;
+    const conversation = this.selectedConversation.id;
+    const workspace = this.workspaceId;
+    await this.action(async () => {
+      await this.api.call(
+        this.path(`conversations/${conversation}/voice`),
+        'POST',
+        draft,
+      );
+      if (
+        workspace === this.workspaceId &&
+        conversation === this.selectedConversation?.id
+      ) {
+        this.voiceRecorder?.reset();
+        await this.pollMessages();
+      }
     });
   }
   async starConversation() {

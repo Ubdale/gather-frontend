@@ -625,7 +625,15 @@
             [class.from-me]="message.user_id===api.user()?.id"
           >
             <div class="message-bubble">
+              @if(message.duration){
+              <gather-voice-player
+                [src]="'/api/'+path('conversations/'+selectedConversation.id+'/messages/'+message.id+'/audio')"
+                [duration]="message.duration"
+                [waveform]="message.waveform || []"
+              />
+              }@else{
               <p>{{message.body}}</p>
+              }
               <small>{{time(message.created)|date:'MMM d, h:mm a'}}</small>
             </div>
           </div>
@@ -638,6 +646,10 @@
           }
         </div>
         <div class="thread-composer">
+          <gather-voice-recorder
+            [disabled]="busy||selectedConversation.people.at(0)?.status==='suspended'"
+            (recorded)="sendVoice($event)"
+          />
           @if(showEmoji){
           <div class="emoji-picker">
             @for(emoji of ['👋','😊','✨','🙌','💚','👍'];track emoji){<button

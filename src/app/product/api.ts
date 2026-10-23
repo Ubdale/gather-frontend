@@ -72,6 +72,8 @@ export interface Conversation {
   last: { id: number; body: string; created: string } | null;
 }
 export interface Message {
+  duration?: number;
+  waveform?: number[];
   id: number;
   body: string;
   user_id: number;
