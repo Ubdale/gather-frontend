@@ -30,6 +30,8 @@ Production baseline: homepage, API health and plans, direct routes, pilot sign-i
 
 Updated production build in isolated QC: signed in as a synthetic owner; published a post; reacted, saved and commented; started a conversation and sent a message to a synthetic test member; clicked the logo from Messages and returned to the signed-in feed; switched to a separate workspace and verified the previous workspace's post was absent. No real customer messages or paid plan activations were used.
 
+The synthetic member then signed in, received/read the message and cleared its unread count; Admin Studio navigation was absent. The deployed Vercel update was verified separately: the authenticated public homepage restored Open your workspace, and clicking the workspace logo from Messages returned to the signed-in feed. Both repositories' CI checks passed for the release commits.
+
 ## Release limits and launch gates
 
 - Validate the deployed fix after Vercel/Render finish their deployments; a Git push alone is not live verification.
