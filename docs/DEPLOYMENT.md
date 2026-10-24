@@ -13,6 +13,8 @@ Open http://127.0.0.1:4200. Create an account and workspace; no seeded credentia
 
 ## Container deployment
 
+For Vercel, import `Ubdale/gather-frontend` on branch `main`, framework Angular, root directory unchanged, Node 24.x, build `npm run build`, install `npm ci --include=dev`, and output `dist/browser`. The committed `vercel.json` proxies `/api/*` to `https://gather-backend-t3g1.onrender.com/api/*` and serves Angular routes through `index.html`. No frontend environment variables are needed. After deployment, set Render's `FRONTEND_URL` to the exact production Vercel origin with no trailing slash and redeploy the backend. Use the production URL for sign-in; arbitrary preview domains are not in the backend origin allowlist.
+
 For a Render Node web service, select `gather-backend`, branch `main`, use build command `npm ci --include=dev && npm run build`, start command `npm start`, and health path `/api/health`. Set `NODE_VERSION=24.21.0`, `NODE_ENV=production`, `HOST=0.0.0.0`, `DATABASE_URL` to the private Neon URL, `DATABASE_SCHEMA=gather`, `FRONTEND_URL` to the exact HTTPS Vercel origin and `TRUST_PROXY=1`. Render supplies `PORT`. Production builds explicitly include development dependencies because TypeScript is needed for compilation. The Vercel frontend must proxy `/api/*` to the Render API on the same browser origin; do not put database credentials into frontend settings.
 
 From the directory containing both checkouts, create a compose.yaml similar to:
