@@ -89,6 +89,7 @@ export class Api {
       response = await fetch('/api/' + path, {
         method,
         credentials: 'same-origin',
+        signal: AbortSignal.timeout(20000),
         headers:
           body === undefined ? {} : { 'Content-Type': 'application/json' },
         body: body === undefined ? undefined : JSON.stringify(body),
@@ -104,7 +105,7 @@ export class Api {
         message: 'The server returned an unexpected response.',
       }));
     if (!response.ok) {
-      if (response.status === 401) this.user.set(null);
+      if (response.status === 401 && !['auth/login', 'auth/register', 'auth/recover'].includes(path)) this.user.set(null);
       throw new Error(
         Array.isArray(data.message)
           ? data.message.join(' ')

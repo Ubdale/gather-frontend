@@ -9,15 +9,19 @@ import { Api, User, Plan } from './api';
   imports: [RouterLink],
   template: ` <div class="landing">
     <header class="public-header">
-      <a class="wordmark" routerLink="/"
+      <a class="wordmark" [routerLink]="api.user() ? '/gather/feed' : '/'"
         ><img src="assets/gather-mark.svg" alt="" />Gather</a
       >
       <nav>
-        <a href="#how-it-works">How it works</a><a href="#pricing">Pricing</a
-        ><a routerLink="/login">Sign in</a
-        ><a class="button" routerLink="/register"
-          >Create your community <span>↗</span></a
-        >
+        <a href="#how-it-works">How it works</a><a href="#pricing">Pricing</a>
+        @if (api.user()) {
+          <a class="button" routerLink="/gather/feed">Open your workspace ↗</a>
+        } @else {
+          <a routerLink="/login">Sign in</a
+          ><a class="button" routerLink="/register"
+            >Create your community <span>↗</span></a
+          >
+        }
       </nav>
     </header>
     <main>
@@ -29,8 +33,11 @@ import { Api, User, Plan } from './api';
           social feed and everyday conversations together.
         </p>
         <div class="hero-actions">
-          <a class="button" routerLink="/register"
-            >Start your free pilot <span>↗</span></a
+          <a
+            class="button"
+            [routerLink]="api.user() ? '/gather/feed' : '/register'"
+            >{{ api.user() ? 'Open your workspace' : 'Start your free pilot' }}
+            <span>↗</span></a
           ><a href="#pricing">Explore the plans ↓</a>
         </div>
         <small>10 members · 3 spaces · No card required</small>
@@ -140,10 +147,12 @@ import { Api, User, Plan } from './api';
       </section>
     </main>
     <footer class="public-footer">
-      <a class="wordmark" routerLink="/"
+      <a class="wordmark" [routerLink]="api.user() ? '/gather/feed' : '/'"
         ><img src="assets/gather-mark.svg" alt="" />Gather</a
       ><span>A place for your people.</span
-      ><a routerLink="/login">Member sign in ↗</a>
+      ><a [routerLink]="api.user() ? '/gather/feed' : '/login'">{{
+        api.user() ? 'Open your workspace ↗' : 'Member sign in ↗'
+      }}</a>
     </footer>
   </div>`,
 })
@@ -152,6 +161,7 @@ export class LandingComponent implements OnInit {
   planEntries: { key: string; plan: Plan }[] = [];
   error = '';
   ngOnInit() {
+    void this.api.me().catch(() => {});
     void this.loadPlans();
   }
   async loadPlans() {
@@ -175,7 +185,7 @@ export class LandingComponent implements OnInit {
   imports: [FormsModule, RouterLink],
   template: ` <div class="auth-page">
     <aside class="auth-story">
-      <a class="wordmark" routerLink="/"
+      <a class="wordmark" [routerLink]="api.user() ? '/gather/feed' : '/'"
         ><img src="assets/gather-mark.svg" alt="" />Gather</a
       >
       <div>
@@ -309,6 +319,15 @@ export class AuthComponent implements OnInit {
   ngOnInit() {
     this.register = this.route.snapshot.routeConfig?.path !== 'login';
     this.invitation = this.route.snapshot.queryParamMap.get('token') || '';
+    // Invitation links must remain usable by existing signed-in members.
+    if (!this.invitation) {
+      this.busy = true;
+      void this.api
+        .me()
+        .then(() => this.router.navigateByUrl('/gather/feed'))
+        .catch(() => {})
+        .finally(() => (this.busy = false));
+    }
   }
   toggle() {
     this.register = !this.register;
@@ -316,6 +335,7 @@ export class AuthComponent implements OnInit {
     this.password = '';
   }
   async submit() {
+    if (this.busy) return;
     this.error = '';
     this.busy = true;
     try {

@@ -140,6 +140,7 @@ export class WorkspaceComponent implements OnInit {
   private feedSequence = 0;
   private chatSequence = 0;
   private conversationSequence = 0;
+  private workspaceSequence = 0;
   private polling = false;
   private destroyed = false;
   constructor() {
@@ -288,6 +289,16 @@ export class WorkspaceComponent implements OnInit {
   path(part = '') {
     return `workspaces/${this.workspaceId}${part ? '/' + part : ''}`;
   }
+  private showError(error: unknown) {
+    this.error = (error as Error).message;
+    if (!this.api.user() && !this.destroyed) {
+      this.voiceRecorder?.reset();
+      this.ws = null;
+      this.posts = [];
+      this.messages = [];
+      void this.router.navigateByUrl('/login');
+    }
+  }
   async action(work: () => Promise<unknown>, message = '') {
     if (this.busy) return;
     this.busy = true;
@@ -297,12 +308,13 @@ export class WorkspaceComponent implements OnInit {
       await work();
       if (message) this.notice = message;
     } catch (e) {
-      this.error = (e as Error).message;
+      this.showError(e);
     } finally {
       this.busy = false;
     }
   }
   async loadWorkspace(id: number) {
+    const sequence = ++this.workspaceSequence;
     this.voiceRecorder?.reset();
     this.loading = true;
     this.error = '';
@@ -310,11 +322,25 @@ export class WorkspaceComponent implements OnInit {
     this.chatSequence++;
     this.conversationSequence++;
     this.workspaceId = id;
+    this.ws = null;
     this.posts = [];
     this.messages = [];
     this.selectedConversation = null;
     this.conversations = [];
     this.inviteUrl = '';
+    this.messageText = '';
+    this.messageMore = false;
+    this.messageCursor = undefined;
+    this.mobileThread = false;
+    this.showPeople = false;
+    this.showEmoji = false;
+    this.editPost = null;
+    this.reportPost = null;
+    this.confirmDelete = null;
+    this.moderation = { posts: [], reports: [] };
+    this.invitations = [];
+    this.audit = [];
+    this.billing = { plan: 'trial', requests: [] };
     this.selectedSpace =
       Number(this.route.snapshot.queryParamMap.get('space')) || 0;
     try {
@@ -322,7 +348,11 @@ export class WorkspaceComponent implements OnInit {
         this.ws = null;
         return;
       }
-      this.ws = await this.api.call<Workspace>(this.path());
+      const workspace = await this.api.call<Workspace>(`workspaces/${id}`);
+      if (sequence !== this.workspaceSequence || this.destroyed) return;
+      this.ws = workspace;
+      if (!workspace.spaces.some((space) => space.id === this.selectedSpace))
+        this.selectedSpace = 0;
       try {
         localStorage.setItem('gather-active-workspace', String(id));
       } catch {}
@@ -333,10 +363,12 @@ export class WorkspaceComponent implements OnInit {
       this.composer = '';
       await this.loadSection();
     } catch (e) {
-      this.error = (e as Error).message;
+      if (sequence !== this.workspaceSequence || this.destroyed) return;
+      this.showError(e);
       this.ws = null;
     } finally {
-      this.loading = false;
+      if (sequence === this.workspaceSequence && !this.destroyed)
+        this.loading = false;
     }
   }
   async reload() {
@@ -356,7 +388,7 @@ export class WorkspaceComponent implements OnInit {
       if (this.section === 'messages') await this.loadConversations();
       if (this.section === 'admin') await this.loadAdmin();
     } catch (e) {
-      this.error = (e as Error).message;
+      this.showError(e);
     }
   }
   async loadPosts(more = false) {
@@ -517,11 +549,17 @@ export class WorkspaceComponent implements OnInit {
   }
   async pollMessages() {
     const workspace = this.workspaceId;
+    const sequence = this.chatSequence;
+    const conversation = this.selectedConversation?.id;
     try {
       await this.loadConversations();
-      const conversation = this.selectedConversation?.id;
+      if (
+        workspace !== this.workspaceId ||
+        sequence !== this.chatSequence ||
+        this.destroyed
+      )
+        return;
       if (conversation) {
-        const sequence = this.chatSequence;
         const page = await this.api.call<Page<Message>>(
           this.path(`conversations/${conversation}/messages`),
         );
@@ -538,7 +576,12 @@ export class WorkspaceComponent implements OnInit {
         if (newest !== this.messages.at(-1)?.id) this.scrollMessages();
       }
     } catch (e) {
-      this.error = (e as Error).message;
+      if (
+        workspace === this.workspaceId &&
+        sequence === this.chatSequence &&
+        !this.destroyed
+      )
+        this.showError(e);
     }
   }
   async openConversation(conversation: Conversation) {
@@ -548,6 +591,8 @@ export class WorkspaceComponent implements OnInit {
     this.mobileThread = true;
     this.messageText = '';
     this.messages = [];
+    this.messageMore = false;
+    this.messageCursor = undefined;
     this.error = '';
     try {
       const page = await this.api.call<Page<Message>>(
@@ -560,16 +605,25 @@ export class WorkspaceComponent implements OnInit {
       conversation.unread = 0;
       this.scrollMessages();
     } catch (e) {
-      this.error = (e as Error).message;
+      if (sequence === this.chatSequence && !this.destroyed) this.showError(e);
     }
   }
   async olderMessages() {
     if (!this.selectedConversation || !this.messageCursor) return;
+    const sequence = this.chatSequence;
+    const workspace = this.workspaceId;
+    const conversation = this.selectedConversation.id;
+    const cursor = this.messageCursor;
     await this.action(async () => {
       const page = await this.api.call<Page<Message>>(
-        this.path(`conversations/${this.selectedConversation!.id}/messages`) +
-          `?before=${this.messageCursor}`,
+        `workspaces/${workspace}/conversations/${conversation}/messages?before=${cursor}`,
       );
+      if (
+        sequence !== this.chatSequence ||
+        workspace !== this.workspaceId ||
+        this.destroyed
+      )
+        return;
       this.messages = [...page.items, ...this.messages];
       this.messageMore = page.hasMore;
       this.messageCursor = page.nextCursor;
@@ -591,15 +645,24 @@ export class WorkspaceComponent implements OnInit {
   }
   async sendMessage() {
     if (!this.selectedConversation || !this.messageText.trim()) return;
+    const workspace = this.workspaceId;
+    const conversation = this.selectedConversation.id;
+    const body = this.messageText;
     await this.action(async () => {
       await this.api.call(
-        this.path(`conversations/${this.selectedConversation!.id}/messages`),
+        `workspaces/${workspace}/conversations/${conversation}/messages`,
         'POST',
-        { body: this.messageText },
+        { body },
       );
-      this.messageText = '';
-      this.showEmoji = false;
-      await this.pollMessages();
+      if (
+        workspace === this.workspaceId &&
+        conversation === this.selectedConversation?.id &&
+        !this.destroyed
+      ) {
+        if (this.messageText === body) this.messageText = '';
+        this.showEmoji = false;
+        await this.pollMessages();
+      }
     });
   }
   async sendVoice(draft: VoiceDraft) {

@@ -8,7 +8,7 @@ import { Api } from './api';
   standalone: true,
   imports: [FormsModule, RouterLink],
   template: `<div class="recovery-page">
-    <a class="wordmark" routerLink="/"
+    <a class="wordmark" [routerLink]="api.user() ? '/gather/feed' : '/'"
       ><img src="assets/gather-mark.svg" alt="" />Gather</a
     >
     <section class="panel">
@@ -63,6 +63,7 @@ export class RecoveryComponent {
   error = '';
   done = false;
   async submit() {
+    if (this.busy || this.done) return;
     this.error = '';
     if (this.password !== this.confirmation) {
       this.error = 'The passwords do not match.';

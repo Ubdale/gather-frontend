@@ -119,7 +119,11 @@ export class VoicePlayerComponent implements OnDestroy {
   }
   ngOnDestroy() {
     const audio = this.audio?.nativeElement;
-    if (audio) { audio.pause(); audio.removeAttribute('src'); audio.load(); }
+    if (audio) {
+      audio.pause();
+      audio.removeAttribute('src');
+      audio.load();
+    }
   }
 }
 
@@ -289,6 +293,7 @@ export class VoiceRecorderComponent implements OnDestroy {
         }
       };
       recorder.onerror = () => {
+        if (generation !== this.generation) return;
         this.reset();
         this.error = 'Recording failed. Please try again.';
       };
