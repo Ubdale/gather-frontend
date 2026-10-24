@@ -2,6 +2,8 @@
 
 A private community product with a social feed, direct messaging, and an admin studio. This repository is the Angular client; persistent data and permissions live in the separate NestJS API.
 
+Production frontend: https://gather-frontend.pages.dev (Cloudflare Pages). The API remains on Render and is reached through the frontend's same-origin `/api` proxy.
+
 ## Local development
 
 Use Node.js 24.15 or newer on the Node 24 line.
@@ -38,5 +40,7 @@ Gather supports text and private voice messages with a custom waveform recorder,
 ## Deployment
 
 The included Dockerfile builds the static app and serves it through nginx. The nginx config forwards `/api` to a container named `backend` on port 3000. See `docs/DEPLOYMENT.md` for the two-repository deployment procedure and operator setup. HTTPS termination is required for production session cookies.
+
+Cloudflare Pages: `npm run build:cloudflare` prepares `dist/browser`, including the API Worker. The current Pages project is `gather-frontend`, deployed by Direct Upload. Future Git pushes alone do not update that deployment; build and upload the bundle again or use authenticated `npx wrangler pages deploy dist/browser --project-name gather-frontend --branch main`. `npm run test:cloudflare` checks cookie/body/range forwarding and API failure handling. Database credentials belong only in Render's backend environment.
 
 See `docs/PRODUCT-PLAN.md` for pricing assumptions, the initial customer segment, and the paid-pilot launch model. Deploying infrastructure or acquiring customers is separate from publishing these repositories.
