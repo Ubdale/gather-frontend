@@ -3,8 +3,8 @@
 Validated locally on 24 October 2026 with Node 24.21 and Chrome Headless 155.
 
 - Angular 22 production build: passed (approximately 464 kB initial JavaScript/CSS/polyfills before transfer compression).
-- Frontend browser unit tests: 6 passed.
-- NestJS HTTP, security, persistence, concurrency, and operator-tool tests: 23 passed.
+- Frontend browser unit tests after voice restoration: 10 passed.
+- NestJS PostgreSQL HTTP, security, persistence, concurrency, backup/restore and transaction tests: 25 passed against temporary Neon schemas. Existing accounts, posts, chats and voice bytes were imported into the application schema; the local SQLite backup is preserved.
 - Frontend and backend runtime dependency audits: 0 reported vulnerabilities at the time of the check. This is an advisory check, not a security guarantee.
 - Git publication snapshots: checked for environment files, SQLite data, recovery artifacts, old API credentials, and legacy project history; these are excluded.
 

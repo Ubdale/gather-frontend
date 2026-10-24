@@ -6,7 +6,7 @@ A private community product with a social feed, direct messaging, and an admin s
 
 Use Node.js 24.15 or newer on the Node 24 line.
 
-1. Clone https://github.com/Ubdale/gather-backend into a separate directory, run `npm ci`, `npm run build`, then `npm start` there. The API listens on 127.0.0.1:3000.
+1. Clone https://github.com/Ubdale/gather-backend into a separate directory, run `npm ci`, copy `.env.example` to `.env`, and set the backend-only PostgreSQL `DATABASE_URL`. Run `npm run build`, then `npm start` there. The API listens on 127.0.0.1:3000.
 2. In this frontend repository, run `npm ci` and `npm start`.
 3. Open http://127.0.0.1:4200 and create your own free pilot workspace. There are no default accounts or passwords.
 

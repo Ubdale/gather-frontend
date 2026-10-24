@@ -40,7 +40,7 @@ This document is a launch plan; no outreach, customer sales, payment collection,
 
 ## Launch scope and operating limits
 
-This release is a single-instance NestJS service using a persistent SQLite database. It is suited to a controlled paid pilot with backups and monitoring. Multiple independent API replicas must not write separate local database files; use a coordinated database migration before horizontal scaling.
+This release uses NestJS with shared PostgreSQL storage, including private voice recordings. Neon is supported through a bounded pool with verified TLS. Multi-step mutations use transaction-scoped clients and a schema-scoped advisory write lock. This suits a controlled paid pilot; partition write locking, centralize rate limits and validate deployment capacity before high-throughput scaling. Database credentials stay in the backend environment.
 
 Before public onboarding, configure the production domain/HTTPS, operator support contact, backup schedule, restore procedure, retention/deletion procedure, service terms and privacy information, and an external invoice process. Verify backups and restrict database/operator access. There is no end-to-end encryption claim: authorized participants access messages through the API, and the service operator controls database storage.
 

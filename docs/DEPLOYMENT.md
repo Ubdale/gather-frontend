@@ -6,12 +6,14 @@ Clone gather-frontend and gather-backend next to each other. Use Node 24 for bot
 
 ## Development
 
-Backend: `npm ci`, copy `.env.example` to `.env`, `npm run build`, `npm start`.
+Backend: `npm ci`, copy `.env.example` to `.env`, set the PostgreSQL `DATABASE_URL`, then `npm run build`, `npm start`. Neon URLs belong only in this private backend environment. `DATABASE_SCHEMA=gather` isolates the application tables.
 Frontend: `npm ci`, `npm start`.
 
 Open http://127.0.0.1:4200. Create an account and workspace; no seeded credentials are shipped. Invite another address from Admin Studio and share its one-use link through your own trusted channel. Automatic email delivery is not configured or advertised.
 
 ## Container deployment
+
+For a Render Node web service, select `gather-backend`, branch `main`, use build command `npm ci --include=dev && npm run build`, start command `npm start`, and health path `/api/health`. Set `NODE_VERSION=24.21.0`, `NODE_ENV=production`, `HOST=0.0.0.0`, `DATABASE_URL` to the private Neon URL, `DATABASE_SCHEMA=gather`, `FRONTEND_URL` to the exact HTTPS Vercel origin and `TRUST_PROXY=1`. Render supplies `PORT`. Production builds explicitly include development dependencies because TypeScript is needed for compilation. The Vercel frontend must proxy `/api/*` to the Render API on the same browser origin; do not put database credentials into frontend settings.
 
 From the directory containing both checkouts, create a compose.yaml similar to:
 
@@ -24,11 +26,10 @@ services:
       NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 3000
-      DATABASE_PATH: /app/.data/gather.sqlite
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_SCHEMA: gather
       FRONTEND_URL: https://community.example.com
       TRUST_PROXY: 1
-    volumes:
-      - gather-data:/app/.data
     expose:
       - '3000'
   frontend:
@@ -38,11 +39,9 @@ services:
       - '127.0.0.1:8080:80'
     depends_on:
       - backend
-volumes:
-  gather-data:
 ```
 
-Replace the example hostname and terminate HTTPS at a trusted reverse proxy pointing to 127.0.0.1:8080. Set FRONTEND_URL to the exact public HTTPS origin, without a path. The NestJS API rejects state-changing requests from other origins. Do not enable permissive CORS or expose SQLite files via nginx. Secure session cookies require HTTPS in production.
+Replace the example hostname and terminate HTTPS at a trusted reverse proxy pointing to 127.0.0.1:8080. Set FRONTEND_URL to the exact public HTTPS origin, without a path. The NestJS API rejects state-changing requests from other origins. Do not enable permissive CORS or expose database credentials through the frontend. Secure session cookies require HTTPS in production.
 
 TRUST_PROXY=1 is appropriate only when exactly one trusted HTTP proxy sits directly in front of the API. Adjust your architecture deliberately instead of trusting arbitrary client-supplied forwarding headers.
 
@@ -54,9 +53,11 @@ GET `/api/health` returns service readiness after the application and database i
 
 ## Backups
 
-In the backend checkout/container, `npm run backup -- /private-backups/gather-YYYY-MM-DD.sqlite` creates a consistent backup using SQLite's backup API. The destination directory must exist and must not be under the public web root. Schedule encrypted off-host copies and test restoration.
+In the backend checkout/container, `npm run backup -- /private-backups/gather-YYYY-MM-DD.json` creates a consistent PostgreSQL snapshot, including voice recordings. The destination directory must exist and must not be under the public web root. Schedule encrypted off-host copies and test restoration. The snapshot includes sensitive customer data and password hashes; it does not include database connection credentials.
 
-To restore, stop the API, preserve the current database directory, and replace the configured SQLite database with a verified backup. Start the API and check sign-in, workspaces, posts, and message history. Do not copy an actively changing raw database without a SQLite-aware backup.
+To restore, stop writes, configure an empty PostgreSQL schema, and run `npm run restore -- /private-backups/gather-YYYY-MM-DD.json`. The tool refuses a populated destination. Verify sign-in, workspaces, posts, and voice history before pointing the service at the restored schema. Use provider recovery and native PostgreSQL backups for larger installations.
+
+For an existing SQLite pilot, stop the old API, preserve its SQLite backup, and run `npm run import:sqlite -- /private-data/old-gather.sqlite` with the destination PostgreSQL URL configured. It imports all tables and voice bytes atomically, preserves IDs and timestamps, resets identity sequences, and leaves the SQLite source unchanged. The target Gather schema must be empty.
 
 ## Manual operations
 
